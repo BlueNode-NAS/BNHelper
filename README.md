@@ -1,2 +1,2 @@
-# BNHelper
-An Backend created for BlueNode NAS OS
+# bluenode-helper
+Backend crafted for BlueNode NAS OS
