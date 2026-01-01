@@ -6,6 +6,7 @@ package main
 import (
 	"bluenode-helper/database"
 	"bluenode-helper/handlers"
+	"bluenode-helper/ollama"
 	"context"
 	"flag"
 	"fmt"
@@ -57,12 +58,19 @@ func main() {
 
 	log.Printf("Unix socket created at: %s", socketPath)
 
-	// Initialize database
+	// Initialize configuration database
 	db, err := database.New("")
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
+
+	// Initialize AI database
+	aiDB, err := database.NewAIDB("")
+	if err != nil {
+		log.Fatalf("Failed to initialize AI database: %v", err)
+	}
+	defer aiDB.Close()
 
 	// Create HTTP server
 	mux := http.NewServeMux()
@@ -75,6 +83,21 @@ func main() {
 	configStore := database.NewConfigStore(db)
 	configHandler := handlers.NewConfigHandler(configStore)
 	configHandler.RegisterRoutes(mux)
+
+	// Initialize default configurations if not set
+	if _, err := configStore.Get("ollama.default_model"); err != nil {
+		configStore.Set("ollama.default_model", "qwen2.5:0.5b", "Default Ollama model for chat")
+	}
+	if _, err := configStore.Get("ollama.system_prompt"); err != nil {
+		configStore.Set("ollama.system_prompt", "You are BlueNode Helper, an AI assistant for the BlueNode Server OS.", "System prompt for Ollama chat")
+	}
+
+	// Register Ollama API handlers
+	ollamaClient := ollama.NewClient("")
+	chatStore := database.NewChatStore(aiDB)
+	fileIndexStore := database.NewFileIndexStore(aiDB)
+	ollamaHandler := handlers.NewOllamaHandler(ollamaClient, chatStore, fileIndexStore, configStore)
+	ollamaHandler.RegisterRoutes(mux)
 
 	// Health endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
