@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bluenode-helper/handlers"
 	"context"
 	"flag"
 	"fmt"
@@ -58,12 +59,17 @@ func main() {
 	// Create HTTP server
 	mux := http.NewServeMux()
 
-	// Sample endpoint
+	// Register Docker API handlers
+	dockerHandler := handlers.NewDockerHandler()
+	dockerHandler.RegisterRoutes(mux)
+
+	// Health endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "OK")
 	})
 
+	// Root endpoint
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "BlueNode Helper API")
