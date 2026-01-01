@@ -25,12 +25,12 @@ rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT%{_bindir}
 install -m 0755 %{SOURCE0} $RPM_BUILD_ROOT%{_bindir}/%{name}
 
-install -d $RPM_BUILD_ROOT%{_unitdir}
-install -m 0644 %{SOURCE1} $RPM_BUILD_ROOT%{_unitdir}/%{name}.service
+install -d $RPM_BUILD_ROOT/usr/lib/systemd/system
+install -m 0644 %{SOURCE1} $RPM_BUILD_ROOT/usr/lib/systemd/system/%{name}.service
 
 %files
 %{_bindir}/%{name}
-%{_unitdir}/%{name}.service
+/usr/lib/systemd/system/%{name}.service
 
 %changelog
 * Thu Jan 01 2026 BlueNode-NAS Team - 1.0.0-1
