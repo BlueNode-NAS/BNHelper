@@ -7,7 +7,7 @@ License:        Proprietary
 URL:            https://github.com/BlueNode-NAS/BNHelper
 Source0:        %{name}-%{version}.tar.gz
 
-BuildRequires:  golang >= 1.21
+BuildRequires:  golang
 Requires:       systemd
 
 %description
