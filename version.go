@@ -5,7 +5,7 @@ package main
 
 var (
 	// Version is the current version of bluenode-helper
-	Version = "1.0.0"
+	Version = "0.1.0"
 	// BuildDate will be set during build time
 	BuildDate = "unknown"
 	// GitCommit will be set during build time
