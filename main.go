@@ -17,7 +17,7 @@ import (
 
 const (
 	// Unix socket path
-	socketPath = "/tmp/bnhelper.sock"
+	socketPath = "/var/run/bnhelper.sock"
 	// Graceful shutdown timeout
 	shutdownTimeout = 30 * time.Second
 )
