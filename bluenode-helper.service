@@ -1,0 +1,14 @@
+[Unit]
+Description=BlueNode Helper Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bluenode-helper
+Restart=on-failure
+RestartSec=5s
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

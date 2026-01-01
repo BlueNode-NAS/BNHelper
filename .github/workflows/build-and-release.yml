@@ -61,12 +61,10 @@ jobs:
     - name: Prepare RPM build environment
       run: |
         mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-        VERSION=${{ steps.build_info.outputs.version }}
         
-        # Create source tarball
-        mkdir -p ${{ env.BINARY_NAME }}-${VERSION}
-        cp -r * ${{ env.BINARY_NAME }}-${VERSION}/ 2>/dev/null || true
-        tar czf ~/rpmbuild/SOURCES/${{ env.BINARY_NAME }}-${VERSION}.tar.gz ${{ env.BINARY_NAME }}-${VERSION}
+        # Copy pre-built binary and service file as sources
+        cp ${{ env.BINARY_NAME }} ~/rpmbuild/SOURCES/${{ env.BINARY_NAME }}
+        cp bluenode-helper.service ~/rpmbuild/SOURCES/bluenode-helper.service
         
         # Copy spec file
         cp bluenode-helper.spec ~/rpmbuild/SPECS/
@@ -74,12 +72,10 @@ jobs:
     - name: Build RPM package
       run: |
         VERSION=${{ steps.build_info.outputs.version }}
-        GIT_COMMIT=${{ steps.build_info.outputs.git_commit }}
         
         rpmbuild -ba \
           --define "_topdir $HOME/rpmbuild" \
           --define "version ${VERSION}" \
-          --define "git_commit ${GIT_COMMIT}" \
           ~/rpmbuild/SPECS/bluenode-helper.spec
 
     - name: Copy RPM to workspace
