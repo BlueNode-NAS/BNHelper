@@ -7,7 +7,7 @@ License:        Proprietary
 URL:            https://github.com/BlueNode-NAS/BNHelper
 Source0:        %{name}-%{version}.tar.gz
 
-BuildRequires:  golang >= 1.25
+BuildRequires:  golang >= 1.21
 Requires:       systemd
 
 %description
@@ -48,5 +48,5 @@ EOF
 %{_unitdir}/%{name}.service
 
 %changelog
-* Wed Jan 01 2026 BlueNode Team <noreply@bluenode.io> - 1.0.0-1
+* Thu Jan 01 2026 BlueNode-NAS Team - 1.0.0-1
 - Initial RPM package release
