@@ -1,0 +1,169 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+env:
+  GO_VERSION: '1.23'
+  BINARY_NAME: bluenode-helper
+
+jobs:
+  build:
+    name: Build Binary and RPM Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Get version and build info
+      id: build_info
+      run: |
+        VERSION=$(grep 'Version = ' version.go | sed 's/.*"\(.*\)".*/\1/')
+        BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        GIT_COMMIT=$(git rev-parse --short HEAD)
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
+        echo "git_commit=${GIT_COMMIT}" >> $GITHUB_OUTPUT
+        echo "Version: ${VERSION}, Build Date: ${BUILD_DATE}, Commit: ${GIT_COMMIT}"
+
+    - name: Build binary
+      run: |
+        go build -v \
+          -ldflags "-X main.Version=${{ steps.build_info.outputs.version }} -X main.BuildDate=${{ steps.build_info.outputs.build_date }} -X main.GitCommit=${{ steps.build_info.outputs.git_commit }}" \
+          -o ${{ env.BINARY_NAME }}
+
+    - name: Test version output
+      run: |
+        chmod +x ${{ env.BINARY_NAME }}
+        ./${{ env.BINARY_NAME }} -version
+
+    - name: Install RPM build tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y rpm
+
+    - name: Prepare RPM build environment
+      run: |
+        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        
+        # Copy pre-built binary and service file as sources
+        cp ${{ env.BINARY_NAME }} ~/rpmbuild/SOURCES/${{ env.BINARY_NAME }}
+        cp bluenode-helper.service ~/rpmbuild/SOURCES/bluenode-helper.service
+        
+        # Copy spec file
+        cp bluenode-helper.spec ~/rpmbuild/SPECS/
+
+    - name: Build RPM package
+      run: |
+        VERSION=${{ steps.build_info.outputs.version }}
+        
+        rpmbuild -ba \
+          --define "_topdir $HOME/rpmbuild" \
+          --define "version ${VERSION}" \
+          ~/rpmbuild/SPECS/bluenode-helper.spec
+
+    - name: Copy RPM to workspace
+      run: |
+        mkdir -p dist
+        cp ~/rpmbuild/RPMS/*/*.rpm dist/ || true
+        cp ~/rpmbuild/SRPMS/*.rpm dist/ || true
+        ls -lh dist/
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: bluenode-helper-binary
+        path: ${{ env.BINARY_NAME }}
+        retention-days: 30
+
+    - name: Upload RPM artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: bluenode-helper-rpm
+        path: dist/*.rpm
+        retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: |
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/main' &&
+      contains(github.event.head_commit.message, '(RELEASE)')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version
+      id: version
+      run: |
+        VERSION=$(grep 'Version = ' version.go | sed 's/.*"\(.*\)".*/\1/')
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+
+    - name: Download binary artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: bluenode-helper-binary
+        path: ./artifacts/
+
+    - name: Download RPM artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: bluenode-helper-rpm
+        path: ./artifacts/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        name: Release ${{ steps.version.outputs.version }}
+        body: |
+          ## BlueNode Helper ${{ steps.version.outputs.version }}
+          
+          Automated release created from commit: ${{ github.event.head_commit.message }}
+          
+          ### Installation
+          
+          #### Binary Installation
+          1. Download the `bluenode-helper` binary
+          2. Make it executable: `chmod +x bluenode-helper`
+          3. Move to a directory in your PATH: `sudo mv bluenode-helper /usr/local/bin/`
+          
+          #### RPM Installation (Fedora/RHEL/CentOS)
+          ```bash
+          sudo rpm -ivh bluenode-helper-*.rpm
+          sudo systemctl enable --now bluenode-helper
+          ```
+          
+          ### What's Changed
+          - Full changelog: https://github.com/${{ github.repository }}/commits/${{ steps.version.outputs.tag }}
+        files: |
+          artifacts/bluenode-helper
+          artifacts/*.rpm
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

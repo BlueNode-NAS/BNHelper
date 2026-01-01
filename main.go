@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -23,6 +24,18 @@ const (
 )
 
 func main() {
+	// Parse command-line flags
+	versionFlag := flag.Bool("version", false, "Print version information and exit")
+	flag.Parse()
+
+	// Handle version flag
+	if *versionFlag {
+		fmt.Printf("bluenode-helper version %s\n", Version)
+		fmt.Printf("Build Date: %s\n", BuildDate)
+		fmt.Printf("Git Commit: %s\n", GitCommit)
+		os.Exit(0)
+	}
+
 	// Remove existing socket if it exists
 	if err := os.RemoveAll(socketPath); err != nil {
 		log.Fatalf("Failed to remove existing socket: %v", err)
