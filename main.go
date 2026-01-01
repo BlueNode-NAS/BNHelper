@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bluenode-helper/database"
 	"bluenode-helper/handlers"
 	"context"
 	"flag"
@@ -56,12 +57,24 @@ func main() {
 
 	log.Printf("Unix socket created at: %s", socketPath)
 
+	// Initialize database
+	db, err := database.New("")
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
 	// Create HTTP server
 	mux := http.NewServeMux()
 
 	// Register Docker API handlers
 	dockerHandler := handlers.NewDockerHandler()
 	dockerHandler.RegisterRoutes(mux)
+
+	// Register Configuration API handlers
+	configStore := database.NewConfigStore(db)
+	configHandler := handlers.NewConfigHandler(configStore)
+	configHandler.RegisterRoutes(mux)
 
 	// Health endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
